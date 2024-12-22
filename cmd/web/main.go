@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/joaooliveirapro/wcag-scan-go/internal/utils"
 )
@@ -11,29 +12,27 @@ func main() {
 	log, err := utils.LoggerInit()
 	if err != nil {
 		fmt.Printf("[fatal] Logger didn't start: %+v", err)
+		os.Exit(1)
 	}
 	defer log.Close()
 
 	// App config
 	// For each worker, must add a starting url to prevent early closure of workers
 	app := App{
-		Workers:  2,
-		MaxDepth: 40,
-		Domain:   "careers.arm.com",
+		Workers:  1,
+		MaxDepth: 20,
+		Domain:   "careers.adeccogroup.com",
 		StartingURLs: []string{
-			"https://careers.arm.com/",
-			"https://careers.arm.com/search-jobs",
+			"https://careers.adeccogroup.com/",
 		},
 		ExcludeRegex: []string{},
-		IncludeRegex: []string{`/job/`},
+		IncludeRegex: []string{},
 	}
 
 	// Run app
 	app.Run()
 
-	// Save seen URLs to file
-	app.SaveToFile("seen.txt")
+	// Save processed URLs to file
+	app.SaveProcessedToFile("urls_processed.txt")
 
-	//
-	fmt.Printf("%d\n", app.Requests)
 }

@@ -96,13 +96,16 @@ func Trawl(workerID int, app *App) {
 		noMoreUrls := app.URLsQ.Len() == 0
 		stopConditionReached := app.Requests >= app.MaxDepth
 		if noMoreUrls || stopConditionReached {
+			if stopConditionReached {
+				fmt.Println("Stop condition reached")
+			}
 			app.Mut.Unlock() // Release lock and break out of loop
 			break
 		}
 		nextUrl := app.URLsQ.PopFront() // PopFront() needs to be thread safe to avoid panics
 		app.Mut.Unlock()                // Release lock after popping the URL
 
-		fmt.Printf("[Worker %d] parsing %s\n", workerID, nextUrl)
+		// fmt.Printf("[Worker %d] parsing %s\n", workerID, nextUrl)
 
 		/* Get HTML string for URL */
 		html, err := utils.GetHTML(nextUrl)
@@ -177,7 +180,16 @@ func Trawl(workerID int, app *App) {
 				}
 			}
 		}
-		fmt.Printf("[Worker %d] added %d new links to URLsQ.\n", workerID, added)
+
+		/* Add to processed */
+		// Ensure if the URL has been seen a re-processed
+		// to add the count instead of replacing it
+		oldAdded, loaded := app.ProcessedURLs.LoadOrStore(nextUrl, added)
+		if loaded {
+			app.ProcessedURLs.Store(nextUrl, added+oldAdded.(int))
+		}
+
+		fmt.Printf("[Worker %d] %s added %d new links to URLsQ.\n", workerID, nextUrl, added)
 		app.Mut.Unlock() // Cannot use defer for Unlock() otherwise go routines hang
 	}
 	fmt.Printf("[Worker %d] is done.\n", workerID)

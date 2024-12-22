@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -10,17 +11,18 @@ import (
 )
 
 type App struct {
-	Workers      int
-	MaxDepth     int
-	Domain       string
-	URLsQ        deque.Deque[string]
-	Requests     int
-	SeenURLs     sync.Map
-	StartingURLs []string
-	ExcludeRegex []string
-	IncludeRegex []string
-	Wg           sync.WaitGroup
-	Mut          sync.Mutex
+	Workers       int
+	MaxDepth      int
+	Domain        string
+	URLsQ         deque.Deque[string]
+	Requests      int
+	SeenURLs      sync.Map
+	ProcessedURLs sync.Map
+	StartingURLs  []string
+	ExcludeRegex  []string
+	IncludeRegex  []string
+	Wg            sync.WaitGroup
+	Mut           sync.Mutex
 }
 
 func (app *App) Run() {
@@ -38,15 +40,27 @@ func (app *App) Run() {
 	app.Wg.Wait()
 }
 
-func (app *App) SaveToFile(filename string) {
+func (app *App) SaveProcessedToFile(filename string) {
 	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Fatalf("Failed to open file: %v", err)
+		log.Printf("Failed to open file: %v", err)
 	}
 	defer file.Close()
-	for url := range app.SeenURLs.Range {
-		if _, err := file.WriteString(fmt.Sprintf("%s\n", url)); err != nil {
-			log.Fatalf("Failed to write to file: %v", err)
-		}
+	type ProcessedUrl struct {
+		Url        string `json:"url"`
+		AddedCount int    `json:"addedCount"`
 	}
+	app.ProcessedURLs.Range(func(url, addedCount any) bool {
+		pu := ProcessedUrl{Url: url.(string), AddedCount: addedCount.(int)}
+		jsonStr, err := json.Marshal(pu)
+		if err != nil {
+			log.Printf("Failed to conver to JSON: %v", err)
+			return true
+		}
+		_, err = file.WriteString(fmt.Sprintf("%s\n", jsonStr))
+		if err != nil {
+			log.Printf("Failed to write to file: %v", err)
+		}
+		return true
+	})
 }
