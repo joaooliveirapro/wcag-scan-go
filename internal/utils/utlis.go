@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -10,8 +11,17 @@ import (
 )
 
 const (
-	LOGS_FOLDER_PATH = "./_logs/"
+	LOGS_FOLDER_PATH = "./logs/"
 )
+
+func LogAsJSONString(params map[string]any) {
+	jsonData, err := json.Marshal(params)
+	if err != nil {
+		log.Printf("Error marshalling JSON: %v", err)
+	} else {
+		log.Println(string(jsonData))
+	}
+}
 
 func LoggerInit() (*os.File, error) {
 	// Set logger properties
@@ -25,36 +35,35 @@ func LoggerInit() (*os.File, error) {
 	return logFile, nil
 }
 
-func Get(url string) ([]byte, error) {
+func GetHTML(url string) (string, error) {
 	// Create a request object
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Printf("[debug] error creating request: %v\n", err)
-		return nil, err
+		e := fmt.Errorf("[debug] error creating request: %v", err)
+		return "", e
 	}
 
 	// Create a new HTTP Client
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("[debug] error making request: %v\n", err)
-		return nil, err
+		e := fmt.Errorf("[debug] error making request: %v", err)
+		return "", e
 	}
 	defer resp.Body.Close()
 
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("[debug] error reading response body: %v\n", err)
-		return nil, err
+		e := fmt.Errorf("[debug] error reading response body: %v", err)
+		return "", e
 	}
 
 	// Response is OK
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[debug] HTTP code error %d\n", resp.StatusCode)
-		return nil, err
+		e := fmt.Errorf("[debug] HTTP code error %d", resp.StatusCode)
+		return "", e
 	}
-
-	return body, nil
-
+	html := string(body)
+	return html, nil
 }
