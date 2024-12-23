@@ -25,6 +25,7 @@ type App struct {
 	Mut           sync.Mutex
 }
 
+
 func (app *App) Run() {
 	// Add starting urls to deque
 	for _, url := range app.StartingURLs {
@@ -39,6 +40,7 @@ func (app *App) Run() {
 	// Wait for all Go routines to finish
 	app.Wg.Wait()
 }
+
 
 func (app *App) SaveProcessedToFile(filename string) {
 	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)

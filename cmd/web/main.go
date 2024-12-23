@@ -20,19 +20,19 @@ func main() {
 	// For each worker, must add a starting url to prevent early closure of workers
 	app := App{
 		Workers:  1,
-		MaxDepth: 20,
+		MaxDepth: 50,
 		Domain:   "careers.adeccogroup.com",
 		StartingURLs: []string{
 			"https://careers.adeccogroup.com/",
 		},
 		ExcludeRegex: []string{},
-		IncludeRegex: []string{},
+		IncludeRegex: []string{"/en/"},
 	}
 
 	// Run app
 	app.Run()
 
 	// Save processed URLs to file
-	app.SaveProcessedToFile("urls_processed.txt")
+	app.SaveProcessedToFile("urls_processed.txt") // TODO: no magic strings
 
 }

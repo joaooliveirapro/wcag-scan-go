@@ -92,6 +92,7 @@ func Trawl(workerID int, app *App) {
 	/* Run while there's URLs to process or stop condition has been reached (safe stop) */
 	for {
 		/* Check URLsQ size and stop condition. Grab lock */
+
 		app.Mut.Lock()
 		noMoreUrls := app.URLsQ.Len() == 0
 		stopConditionReached := app.Requests >= app.MaxDepth
@@ -105,10 +106,8 @@ func Trawl(workerID int, app *App) {
 		nextUrl := app.URLsQ.PopFront() // PopFront() needs to be thread safe to avoid panics
 		app.Mut.Unlock()                // Release lock after popping the URL
 
-		// fmt.Printf("[Worker %d] parsing %s\n", workerID, nextUrl)
-
 		/* Get HTML string for URL */
-		html, err := utils.GetHTML(nextUrl)
+		response, err := utils.GetHTML(nextUrl)
 		if err != nil {
 			utils.LogAsJSONString(map[string]any{
 				"workerid": workerID,
@@ -117,9 +116,13 @@ func Trawl(workerID int, app *App) {
 				"error":    fmt.Sprintf("%+v", err.Error()),
 			})
 		}
+		html := response.HTML
 
 		/* Increment Requests count */
 		app.Requests++
+
+		/* Tokenize text content for content search */
+		// TODO
 
 		/* Find all <a> on page */
 		newLinks, err := FindAllPageLinks(html)
@@ -180,15 +183,13 @@ func Trawl(workerID int, app *App) {
 				}
 			}
 		}
-
 		/* Add to processed */
 		// Ensure if the URL has been seen a re-processed
 		// to add the count instead of replacing it
-		oldAdded, loaded := app.ProcessedURLs.LoadOrStore(nextUrl, added)
+		oldAdded, loaded := app.ProcessedURLs.LoadOrStore(fmt.Sprintf("[%d] %s", response.StatusCode, nextUrl), added)
 		if loaded {
-			app.ProcessedURLs.Store(nextUrl, added+oldAdded.(int))
+			app.ProcessedURLs.Store(fmt.Sprintf("[%d] %s", response.StatusCode, nextUrl), added+oldAdded.(int))
 		}
-
 		fmt.Printf("[Worker %d] %s added %d new links to URLsQ.\n", workerID, nextUrl, added)
 		app.Mut.Unlock() // Cannot use defer for Unlock() otherwise go routines hang
 	}
